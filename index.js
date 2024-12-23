@@ -38,9 +38,11 @@ async function run() {
   try {
     const carCollection = client.db('Rent-Car').collection('Cars');
 
-    app.post('/jwt', (req, res) => {
-      const user = req.body;
 
+    //app jwt token 
+    app.post('/jwt', (req, res) => {
+
+      const user = req.body;
       const token = jwt.sign(user, secrectKey, { expiresIn: '1h' });
 
       res.cookie('token', token, {
@@ -48,21 +50,43 @@ async function run() {
         secure: false,
         //  sameSite: "lax"
       });
+
       res.status(200).send({ message: 'jwt issued and cookie set' });
     });
 
+
+
+
     app.post('/add-car', async (req, res) => {
       const data = req.body;
+      console.log("toki")
       const result = await carCollection.insertOne(data);
       res.send(result);
     });
+
+
+    app.get("/cars", async (req,res) => {
+      const result = await carCollection.find().toArray();
+      res.send(result)
+    })
+
+    app.get("/my-cars/:email", async(req,res) => {
+      const email = req.params.email;
+
+      const find = {"user.email" : email};
+      const result = await carCollection.find(find).toArray();
+      res.send(result)
+    })
+
+
+
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db('admin').command({ ping: 1 });
-    console.log(
-      'Pinged your deployment. You successfully connected to MongoDB!'
-    );
+    // await client.connect();
+    // // Send a ping to confirm a successful connection
+    // await client.db('admin').command({ ping: 1 });
+    // console.log(
+    //   'Pinged your deployment. You successfully connected to MongoDB!'
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();

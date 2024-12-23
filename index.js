@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 require('dotenv').config();
 
@@ -38,10 +38,8 @@ async function run() {
   try {
     const carCollection = client.db('Rent-Car').collection('Cars');
 
-
-    //app jwt token 
+    //app jwt token
     app.post('/jwt', (req, res) => {
-
       const user = req.body;
       const token = jwt.sign(user, secrectKey, { expiresIn: '1h' });
 
@@ -54,31 +52,34 @@ async function run() {
       res.status(200).send({ message: 'jwt issued and cookie set' });
     });
 
-
-
-
+    // all new car
     app.post('/add-car', async (req, res) => {
       const data = req.body;
-      console.log("toki")
       const result = await carCollection.insertOne(data);
       res.send(result);
     });
 
-
-    app.get("/cars", async (req,res) => {
+    app.get('/cars', async (req, res) => {
       const result = await carCollection.find().toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
-    app.get("/my-cars/:email", async(req,res) => {
+    // delete car by id
+    app.delete('/cars/:id', async (req, res) => {
+      const id = req.params.id;
+      const find = { _id: new ObjectId(id) };
+      const result = await carCollection.deleteOne(find);
+      res.send({ message: 'delete' });
+    });
+
+    // get cars by user email
+    app.get('/my-cars/:email', async (req, res) => {
       const email = req.params.email;
 
-      const find = {"user.email" : email};
+      const find = { 'user.email': email };
       const result = await carCollection.find(find).toArray();
-      res.send(result)
-    })
-
-
+      res.send(result);
+    });
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();

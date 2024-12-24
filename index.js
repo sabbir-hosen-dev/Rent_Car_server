@@ -16,6 +16,7 @@ app.use(
     // sameSite: "strict",
   })
 );
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -52,15 +53,24 @@ async function run() {
       res.status(200).send({ message: 'jwt issued and cookie set' });
     });
 
-    // all new car
+    // add new car
     app.post('/add-car', async (req, res) => {
       const data = req.body;
       const result = await carCollection.insertOne(data);
       res.send(result);
     });
 
+    //get all Cars
     app.get('/cars', async (req, res) => {
       const result = await carCollection.find().toArray();
+      res.send(result);
+    });
+
+    //get one car bu id
+    app.get('/cars/:id', async (req, res) => {
+      const id = req.params.id;
+      const find = { _id: new ObjectId(id) };
+      const result = await carCollection.findOne(find);
       res.send(result);
     });
 
@@ -71,6 +81,23 @@ async function run() {
       const result = await carCollection.deleteOne(find);
       res.send({ message: 'delete' });
     });
+
+    // update data by id
+
+    app.patch('/cars/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+
+
+      const filter = { _id: new ObjectId(id) };
+      const update = {
+        $set: data,
+      };
+
+      const result = await carCollection.updateOne(filter, update);
+      res.send(result);
+    });
+
 
     // get cars by user email
     app.get('/my-cars/:email', async (req, res) => {

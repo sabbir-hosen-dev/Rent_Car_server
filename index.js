@@ -38,6 +38,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const carCollection = client.db('Rent-Car').collection('Cars');
+    const bookingCollection = client.db('Rent-Car').collection('Booking');
 
     //app jwt token
     app.post('/jwt', (req, res) => {
@@ -89,6 +90,8 @@ async function run() {
       const data = req.body;
 
 
+  
+
       const filter = { _id: new ObjectId(id) };
       const update = {
         $set: data,
@@ -99,6 +102,7 @@ async function run() {
     });
 
 
+
     // get cars by user email
     app.get('/my-cars/:email', async (req, res) => {
       const email = req.params.email;
@@ -107,6 +111,16 @@ async function run() {
       const result = await carCollection.find(find).toArray();
       res.send(result);
     });
+
+
+
+
+    // booking car 
+    app.post("/bookings", async(req,res) => {
+      const data = req.body;
+      const result = await bookingCollection.insertOne(data);
+      res.send({message : "boock add"})
+    })
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();

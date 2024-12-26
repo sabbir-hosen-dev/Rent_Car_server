@@ -11,9 +11,12 @@ const port = process.env.PORT || 8000;
 const app = express();
 app.use(
   cors({
-    origin: 'http://localhost:5173',
+    origin: [
+      'http://localhost:5173',
+      'https://rent-car-881ec.web.app',
+      'https://rent-car-881ec.firebaseapp.com'
+    ],
     credentials: true,
-    // sameSite: "strict",
   })
 );
 
@@ -35,28 +38,56 @@ const client = new MongoClient(uri, {
   },
 });
 
+//jwt verify
+
+const verifyJWT = (req, res, next) => {
+  const token = req.cookies.token;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  jwt.verify(token, secrectKey, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    req.user = decoded;
+    next();
+  });
+};
+
 async function run() {
   try {
     const carCollection = client.db('Rent-Car').collection('Cars');
     const bookingCollection = client.db('Rent-Car').collection('Booking');
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    };
     //app jwt token
     app.post('/jwt', async (req, res) => {
       try {
         const user = req.body;
         const token = jwt.sign(user, secrectKey, { expiresIn: '1h' });
 
-        res.cookie('token', token, {
-          httpOnly: true,
-          secure: false,
-          //  sameSite: "lax"
-        });
+        res.cookie('token', token, cookieOptions);
 
         res.status(200).send({ message: 'jwt issued and cookie set' });
       } catch (err) {
         console.error(err);
         res.status(500).send({ message: 'Error generating JWT token' });
       }
+    });
+
+    //logout
+    app.post('/logout', (req, res) => {
+      res
+        .clearCookie('token', cookieOptions)
+        .status(200)
+        .json({ success: true, message: 'Logged out successfully' });
     });
 
     // Add new car
@@ -124,9 +155,14 @@ async function run() {
     });
 
     // Get cars by user email
-    app.get('/my-cars/:email', async (req, res) => {
+    app.get('/my-cars/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.user.email) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
+
       try {
-        const email = req.params.email;
         const find = { 'owner.email': email };
         const result = await carCollection.find(find).toArray();
         res.send(result);
@@ -136,12 +172,27 @@ async function run() {
       }
     });
 
+    // get latest bookings car  data
+    app.get('/latest', async (req, res) => {
+      try {
+        const result = await carCollection
+          .find({})
+          .sort({ postDate: -1 })
+          .limit(6)
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(err);
+        res.status(500).send({ message: 'latest car not fetching' });
+      }
+    });
+
     // Booking car
-    app.post('/bookings', async (req, res) => {
+    app.post('/bookings', verifyJWT, async (req, res) => {
       try {
         const data = req.body;
         const result = await bookingCollection.insertOne(data);
-        res.send({ message: 'Booking added' });
+        res.send(result);
       } catch (err) {
         console.error(err);
         res.status(500).send({ message: 'Error booking car' });
@@ -149,10 +200,14 @@ async function run() {
     });
 
     // my bookings data by email
-    app.get('/my-bookings/:email', async (req, res) => {
+    app.get('/my-bookings/:email', verifyJWT, async (req, res) => {
       try {
         const email = req.params.email;
-        const find = { 'bayer.email': email };
+
+        if (email !== req.user.email) {
+          return res.status(403).json({ message: 'Unauthorized' });
+        }
+        const find = { 'hirer.email': email };
         const result = await bookingCollection.find(find).toArray();
         res.send(result);
       } catch (error) {
@@ -167,7 +222,7 @@ async function run() {
         const id = req.params.id;
         const filter = { _id: new ObjectId(id) };
         const result = await bookingCollection.deleteOne(filter);
-        res.send({ message: 'Deleted' });
+        res.send(result);
       } catch (error) {
         console.error(err);
         res.status(500).send({ message: err.message });
@@ -175,7 +230,7 @@ async function run() {
     });
 
     // put bookin date
-    app.put('/bookings/:id', async (req, res) => {
+    app.put('/bookings/:id', verifyJWT, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
 
@@ -206,6 +261,82 @@ async function run() {
       }
     });
 
+    //booking request get
+    app.get('/booking/request', verifyJWT, async (req, res) => {
+      try {
+        const email = req.query.email;
+
+        const filter = { 'owner.email': email };
+        const result = await bookingCollection.find(filter).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating booking:', error);
+        return res
+          .status(500)
+          .json({ error: 'Failed to bookings request Data' });
+      }
+    });
+
+    //booking panding data get
+    app.get('/booking/request/status', verifyJWT, async (req, res) => {
+      try {
+        const email = req.query.email;
+
+        if (email !== req.user.email) {
+          return res.status(403).json({ message: 'Unauthorized' });
+        }
+        const status = req.query.status;
+
+        const filter = { 'owner.email': email, bookingStatus: status };
+        const result = await bookingCollection.find(filter).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating booking:', error);
+        return res
+          .status(500)
+          .json({ error: 'Failed to bookings request Data' });
+      }
+    });
+
+    //status Update
+    app.patch('/booking/:id', verifyJWT, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const status = req.query.status;
+        const carQuery = { _id: new ObjectId(req.query.carId) };
+
+        let avaliableValue = false;
+
+        if (status === 'Canceled' || status === 'Pending') {
+          avaliableValue = true;
+        }
+        if (status === 'Confirmed') {
+          true;
+        }
+        const updateCarAvilaty = {
+          $set: {
+            avalilable: avaliableValue,
+          },
+        };
+
+        const find = await carCollection.updateOne(carQuery, updateCarAvilaty);
+        // console.log(find);
+
+        const filter = { _id: new ObjectId(id) };
+        const update = {
+          $set: {
+            bookingStatus: status,
+          },
+        };
+
+        const result = await bookingCollection.updateOne(filter, update);
+        res.send(result);
+      } catch (error) {
+        console.error('Error updating booking:', error);
+        return res.status(500).json({ error: 'Failed to status update' });
+      }
+    });
+
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // // Send a ping to confirm a successful connection
@@ -219,6 +350,8 @@ async function run() {
   }
 }
 run().catch(console.dir);
+
+app.options('*', cors());
 
 app.get('/', (req, res) => {
   res.send(`Car rent Server Running`);

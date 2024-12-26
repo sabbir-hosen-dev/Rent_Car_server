@@ -114,6 +114,41 @@ async function run() {
       }
     });
 
+    // Get cars with pagination
+    app.get('/cars/page', async (req, res) => {
+      const { page = 1, limit = 12 } = req.query;
+
+      // Convert page and limit to integers
+      const pageInt = parseInt(page, 10);
+      const limitInt = parseInt(limit, 10);
+
+      try {
+        // Get the total number of cars in the collection
+        const totalItems = await carCollection.countDocuments();
+
+        // Fetch cars for the current page, with the specified limit
+        const cars = await carCollection
+          .find()
+          .skip((pageInt - 1) * limitInt) // Skip previous pages
+          .limit(limitInt) // Limit the number of records to the page size
+          .toArray();
+
+        // Calculate the total number of pages
+        const totalPages = Math.ceil(totalItems / limitInt);
+
+        // Send the response with pagination data
+        res.json({
+          items: cars,
+          totalItems,
+          totalPages,
+          currentPage: pageInt,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Failed to fetch cars' });
+      }
+    });
+
     // Get one car by id
     app.get('/cars/:id', async (req, res) => {
       try {
@@ -188,17 +223,17 @@ async function run() {
       }
     });
 
-    // all boolings 
-    app.get("/bookings" , async (req,res) => {
+    // all boolings
+    app.get('/bookings', async (req, res) => {
       try {
-        const result =await bookingCollection.find().toArray();
+        const result = await bookingCollection.find().toArray();
 
-        res.send(result)
+        res.send(result);
       } catch (error) {
         console.error(err);
         res.status(500).send({ message: 'bookings not fetching' });
       }
-    })
+    });
 
     // Booking car
     app.post('/bookings', verifyJWT, async (req, res) => {
@@ -317,26 +352,29 @@ async function run() {
         const id = req.params.id;
         const status = req.query.status;
         const carQuery = { _id: new ObjectId(req.query.carId) };
-    
+
         let avaliableValue = false;
-    
+
         if (status === 'Canceled' || status === 'Pending') {
           avaliableValue = true;
         }
         if (status === 'Confirmed') {
           avaliableValue = false;
         }
-    
+
         const updateCarAvilaty = {
           $set: {
             avalilable: avaliableValue,
           },
           ...(status === 'Confirmed' && { $inc: { bookingCount: 1 } }),
         };
-    
+
         // Update the car collection based on the carQuery
-        const carUpdateResult = await carCollection.updateOne(carQuery, updateCarAvilaty);
-    
+        const carUpdateResult = await carCollection.updateOne(
+          carQuery,
+          updateCarAvilaty
+        );
+
         // Update the booking status in the booking collection
         const filter = { _id: new ObjectId(id) };
         const update = {
@@ -344,19 +382,20 @@ async function run() {
             bookingStatus: status,
           },
         };
-    
-        const bookingUpdateResult = await bookingCollection.updateOne(filter, update);
-    
+
+        const bookingUpdateResult = await bookingCollection.updateOne(
+          filter,
+          update
+        );
+
         res.send({ carUpdateResult, bookingUpdateResult });
       } catch (error) {
         console.error('Error updating booking:', error);
-        return res.status(500).json({ error: 'Failed to update booking status' });
+        return res
+          .status(500)
+          .json({ error: 'Failed to update booking status' });
       }
     });
-    
-
-
-    
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
@@ -381,4 +420,3 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log('app running at ', port);
 });
-

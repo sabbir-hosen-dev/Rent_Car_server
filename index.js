@@ -14,7 +14,7 @@ app.use(
     origin: [
       'http://localhost:5173',
       'https://rent-car-881ec.web.app',
-      'https://rent-car-881ec.firebaseapp.com'
+      'https://rent-car-881ec.firebaseapp.com',
     ],
     credentials: true,
   })
@@ -61,6 +61,7 @@ async function run() {
   try {
     const carCollection = client.db('Rent-Car').collection('Cars');
     const bookingCollection = client.db('Rent-Car').collection('Booking');
+    const reCollection = client.db('Rent-Car').collection('Booking');
 
     const cookieOptions = {
       httpOnly: true,
@@ -187,6 +188,18 @@ async function run() {
       }
     });
 
+    // all boolings 
+    app.get("/bookings" , async (req,res) => {
+      try {
+        const result =await bookingCollection.find().toArray();
+
+        res.send(result)
+      } catch (error) {
+        console.error(err);
+        res.status(500).send({ message: 'bookings not fetching' });
+      }
+    })
+
     // Booking car
     app.post('/bookings', verifyJWT, async (req, res) => {
       try {
@@ -304,38 +317,46 @@ async function run() {
         const id = req.params.id;
         const status = req.query.status;
         const carQuery = { _id: new ObjectId(req.query.carId) };
-
+    
         let avaliableValue = false;
-
+    
         if (status === 'Canceled' || status === 'Pending') {
           avaliableValue = true;
         }
         if (status === 'Confirmed') {
-          true;
+          avaliableValue = false;
         }
+    
         const updateCarAvilaty = {
           $set: {
             avalilable: avaliableValue,
           },
+          ...(status === 'Confirmed' && { $inc: { bookingCount: 1 } }),
         };
-
-        const find = await carCollection.updateOne(carQuery, updateCarAvilaty);
-        // console.log(find);
-
+    
+        // Update the car collection based on the carQuery
+        const carUpdateResult = await carCollection.updateOne(carQuery, updateCarAvilaty);
+    
+        // Update the booking status in the booking collection
         const filter = { _id: new ObjectId(id) };
         const update = {
           $set: {
             bookingStatus: status,
           },
         };
-
-        const result = await bookingCollection.updateOne(filter, update);
-        res.send(result);
+    
+        const bookingUpdateResult = await bookingCollection.updateOne(filter, update);
+    
+        res.send({ carUpdateResult, bookingUpdateResult });
       } catch (error) {
         console.error('Error updating booking:', error);
-        return res.status(500).json({ error: 'Failed to status update' });
+        return res.status(500).json({ error: 'Failed to update booking status' });
       }
     });
+    
+
+
+    
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
@@ -360,3 +381,4 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log('app running at ', port);
 });
+

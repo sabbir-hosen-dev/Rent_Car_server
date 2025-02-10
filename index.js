@@ -214,7 +214,7 @@ async function run() {
         const result = await carCollection
           .find({})
           .sort({ postDate: -1 })
-          .limit(6)
+          .limit(8)
           .toArray();
         res.send(result);
       } catch (error) {
@@ -277,32 +277,25 @@ async function run() {
       }
     });
 
-    // put bookin date
-    app.put('/bookings/:id', verifyJWT, async (req, res) => {
-      const id = req.params.id;
-      const data = req.body;
-
-      const filter = { _id: new ObjectId(id) };
-      const update = {
-        $set: {
-          bookingDate: new Date(data.bookingDate),
-          endDate: new Date(data.endDate),
-        },
-      };
+    //  modefy bookin date
+    app.patch('/booking/update/:id', async (req, res) => {
 
       try {
-        // Perform the update in the database
+        const id = req.params.id;
+        const data = req.body;
+      
+
+        const filter = { _id: new ObjectId(id) };
+        const update = {
+          $set: {
+            bookingDate: data.bookingDate,
+            bookingEndDate:data.bookingEndDate,
+          },
+        };
+
         const result = await bookingCollection.updateOne(filter, update);
 
-        if (result.modifiedCount === 0) {
-          return res
-            .status(404)
-            .json({ error: 'Booking not found or no changes made' });
-        }
-
-        return res
-          .status(200)
-          .json({ message: 'Booking updated successfully' });
+        return res.send(result)
       } catch (error) {
         console.error('Error updating booking:', error);
         return res.status(500).json({ error: 'Failed to update booking' });

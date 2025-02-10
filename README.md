@@ -1,4 +1,7 @@
+
 # Car Rental Server
+
+A backend server for managing car rentals, bookings, and user authentication using **Node.js**, **Express.js**, **MongoDB**, and **JWT Authentication**.
 
 ## Features
 
@@ -10,274 +13,78 @@
 - **Booking Status Updates**: Update booking status (e.g., confirmed, canceled) and update car availability accordingly.
 - **User-Specific Data**: Allows users to fetch their own car listings and bookings.
 
-## API Endpoints
+## Getting Started
 
-### Authentication Endpoints
+### Prerequisites
 
-- **POST /jwt**
+Make sure you have the following installed:
 
-  - Description: Generate a JWT token for the user.
-  - Request Body:
-    ```json
-    {
-      "email": "user@example.com",
-      "password": "userpassword"
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "message": "jwt issued and cookie set"
-    }
-    ```
+- [Node.js](https://nodejs.org/) (v16+ recommended)
+- [MongoDB](https://www.mongodb.com/) (local or cloud-based)
 
-- **POST /logout**
-  - Description: Log out the user by clearing the JWT token.
-  - Response:
-    ```json
-    {
-      "success": true,
-      "message": "Logged out successfully"
-    }
-    ```
+### Installation
 
----
+1. **Clone the repository**
+   ```sh
+   git clone https://github.com/your-username/car-rental-server.git
+   cd car-rental-server
+   ```
 
-### Car Management Endpoints
+2. **Install dependencies**
+   ```sh
+   npm install
+   ```
 
-- **POST /add-car**
+3. **Set up environment variables**  
+   Create a `.env` file in the root directory and add:
+   ```sh
+   DB_USER=your_db_username
+   DB_PASS=your_db_password
+   SECRECT_KEY=your_jwt_secret
+   PORT=5000
+   NODE_ENV=development
+   ```
 
-  - Description: Add a new car to the database.
-  - Request Body:
-    ```json
-    {
-      "name": "Car Name",
-      "model": "Car Model",
-      "pricePerDay": 100,
-      "owner": {
-        "email": "owner@example.com",
-        "name": "Owner Name"
-      },
-      "avalilable": true
-    }
-    ```
+4. **Start the server**
+   ```sh
+   npm start
+   ```
+   The server should now be running at `http://localhost:5000`.
 
-- **GET /cars**
+### API Endpoints
 
-  - Description: Get a list of all cars available.
-  - Response:
-    ```json
-    [
-      {
-        "_id": "car_id",
-        "name": "Car Name",
-        "model": "Car Model",
-        "pricePerDay": 100,
-        "owner": {
-          "email": "owner@example.com",
-          "name": "Owner Name"
-        },
-        "avalilable": true
-      }
-    ]
-    ```
+#### Authentication
 
-- **GET /cars/:id**
+- **POST /jwt** - Generate a JWT token for authentication.
+- **POST /logout** - Log out the user.
 
-  - Description: Get a single car by ID.
-  - Response:
-    ```json
-    {
-      "_id": "car_id",
-      "name": "Car Name",
-      "model": "Car Model",
-      "pricePerDay": 100,
-      "owner": {
-        "email": "owner@example.com",
-        "name": "Owner Name"
-      },
-      "avalilable": true
-    }
-    ```
+#### Car Management
 
-- **DELETE /cars/:id**
+- **POST /add-car** - Add a new car.
+- **GET /cars** - Retrieve all available cars.
+- **GET /cars/:id** - Retrieve a single car by ID.
+- **PATCH /cars/:id** - Update car details.
+- **DELETE /cars/:id** - Remove a car.
 
-  - Description: Delete a car by ID.
-  - Response:
-    ```json
-    {
-      "message": "Car deleted"
-    }
-    ```
+#### Booking Management
 
-- **PATCH /cars/:id**
-  - Description: Update a car by ID.
-  - Request Body:
-    ```json
-    {
-      "name": "Updated Car Name",
-      "pricePerDay": 150
-    }
-    ```
+- **POST /bookings** - Create a new booking.
+- **GET /my-bookings/:email** - Get bookings by user email.
+- **PUT /bookings/:id** - Update booking details.
+- **PATCH /booking/:id** - Update booking status.
+- **DELETE /bookings/:id** - Remove a booking.
 
----
+#### Miscellaneous
 
-### Booking Management Endpoints
-
-- **POST /bookings**
-
-  - Description: Book a car.
-  - Request Body:
-    ```json
-    {
-      "carId": "car_id",
-      "hirer": {
-        "email": "hirer@example.com",
-        "name": "Hirer Name"
-      },
-      "bookingDate": "2024-12-01",
-      "endDate": "2024-12-07",
-      "status": "Pending"
-    }
-    ```
-
-- **GET /my-bookings/:email**
-
-  - Description: Get all bookings for a specific user by email.
-  - Response:
-    ```json
-    [
-      {
-        "_id": "booking_id",
-        "carId": "car_id",
-        "hirer": {
-          "email": "hirer@example.com",
-          "name": "Hirer Name"
-        },
-        "bookingDate": "2024-12-01",
-        "endDate": "2024-12-07",
-        "status": "Pending"
-      }
-    ]
-    ```
-
-- **DELETE /bookings/:id**
-
-  - Description: Delete a booking by ID.
-  - Response:
-    ```json
-    {
-      "message": "Booking deleted"
-    }
-    ```
-
-- **PUT /bookings/:id**
-
-  - Description: Update booking dates.
-  - Request Body:
-    ```json
-    {
-      "bookingDate": "2024-12-02",
-      "endDate": "2024-12-08"
-    }
-    ```
-
-- **PATCH /booking/:id**
-  - Description: Update the status of a booking.
-  - Query Parameters:
-    - `status`: The status of the booking (e.g., "Confirmed", "Pending", "Canceled").
-    - `carId`: The ID of the car being booked.
-  - Response:
-    ```json
-    {
-      "carUpdateResult": {...},
-      "bookingUpdateResult": {...}
-    }
-    ```
-
----
-
-### Miscellaneous Endpoints
-
-- **GET /latest**
-
-  - Description: Get the latest 6 cars added.
-  - Response:
-    ```json
-    [
-      {
-        "_id": "car_id",
-        "name": "Car Name",
-        "model": "Car Model",
-        "pricePerDay": 100,
-        "owner": {
-          "email": "owner@example.com",
-          "name": "Owner Name"
-        },
-        "avalilable": true
-      }
-    ]
-    ```
-
-- **GET /booking/request**
-
-  - Description: Get all bookings for a specific car owner by email.
-  - Query Parameters:
-    - `email`: The email of the car owner.
-  - Response:
-    ```json
-    [
-      {
-        "carId": "car_id",
-        "hirer": {
-          "email": "hirer@example.com",
-          "name": "Hirer Name"
-        },
-        "bookingDate": "2024-12-01",
-        "endDate": "2024-12-07",
-        "status": "Pending"
-      }
-    ]
-    ```
-
-- **GET /booking/request/status**
-  - Description: Get bookings by status for a specific car owner.
-  - Query Parameters:
-    - `email`: The email of the car owner.
-    - `status`: The booking status (e.g., "Confirmed", "Pending", "Canceled").
-  - Response:
-    ```json
-    [
-      {
-        "_id": "booking_id",
-        "carId": "car_id",
-        "hirer": {
-          "email": "hirer@example.com",
-          "name": "Hirer Name"
-        },
-        "bookingDate": "2024-12-01",
-        "endDate": "2024-12-07",
-        "status": "Pending"
-      }
-    ]
-    ```
-
----
+- **GET /latest** - Retrieve the latest 6 cars added.
+- **GET /booking/request** - Get bookings for a car owner.
+- **GET /booking/request/status** - Get bookings filtered by status.
 
 ## Error Handling
 
-- **400 Bad Request**: When the client sends an invalid request.
-- **401 Unauthorized**: When the user is not authenticated.
-- **403 Forbidden**: When the user does not have permission to access the resource.
-- **404 Not Found**: When the requested resource does not exist.
-- **500 Internal Server Error**: When there is a server-side issue.
+- **400 Bad Request**: Invalid request.
+- **401 Unauthorized**: Authentication required.
+- **403 Forbidden**: Access denied.
+- **404 Not Found**: Resource not found.
+- **500 Internal Server Error**: Server failure.
 
----
-
-## Environment Variables
-
-- `DB_USER`: The MongoDB database username.
-- `DB_PASS`: The MongoDB database password.
-- `SECRECT_KEY`: The secret key used to sign JWT tokens.
-- `PORT`: The port for the server to run on.
-- `NODE_ENV`: The environment mode (development/production).
